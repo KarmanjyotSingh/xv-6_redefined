@@ -102,8 +102,8 @@ uint64
 sys_trace()
 {
   int syscall_mask;
-
-  if (argint(0, &syscall_mask) < 0)
+  int flag = argint(0, &syscall_mask);
+  if (flag < 0)
     return -1;
   myproc()->mask = syscall_mask;
   return 0;

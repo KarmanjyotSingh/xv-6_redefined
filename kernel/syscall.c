@@ -127,6 +127,7 @@ static uint64 (*syscalls[])(void) = {
     [SYS_trace] sys_trace,
 };
 
+// list storing names of syscalls corresponding to each syscall id 
 char *syscall_list[] = {
     [SYS_fork] "fork",
     [SYS_exit] "exit",
@@ -152,7 +153,8 @@ char *syscall_list[] = {
     [SYS_trace] "trace",
 };
 
-int syscallargc[] = {
+// array indexed by syscall ID , storing the number of arguments needed by each of the sys call 
+int syscall_arg_count[] = {
     [SYS_fork] 0,
     [SYS_exit] 1,
     [SYS_wait] 1,
@@ -185,11 +187,12 @@ void syscall(void)
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num])
   {
+    // get the return value from the syscall
     p->trapframe->a0 = syscalls[num]();
     if (p->mask & 1 << num)
     {
-      printf("%d: syscall %s ( ", p->pid, syscall_list[num]);
-      for (int i = 0; i < syscallargc[num]; i++)
+       printf("%d: syscall %s ( ", p->pid, syscall_list[num]);
+      for (int i = 0; i < syscall_arg_count[num]; i++)
       {
         if (i == 0)
           printf("%d ", p->trapframe->a0);

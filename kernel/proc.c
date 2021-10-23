@@ -458,32 +458,36 @@ void scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-
   c->proc = 0;
-  for (;;)
-  {
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
 
-    for (p = proc; p < &proc[NPROC]; p++)
+  #if SCHEDULER == RR
+    for (;;)
     {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE)
-      {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+      // Avoid deadlock by ensuring that devices can interrupt.
+      intr_on();
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
       }
-      release(&p->lock);
     }
-  }
+  #elif SCHEDULER == FCFS
+  #elif SCHEDULER == PBS
+  #elif SCHEDULER == MLFQ
+  #endif
 }
 
 // Switch to scheduler.  Must hold only p->lock
