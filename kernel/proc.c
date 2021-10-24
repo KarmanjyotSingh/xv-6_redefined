@@ -125,6 +125,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->proc_start_time = ticks;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -460,34 +461,66 @@ void scheduler(void)
   struct cpu *c = mycpu();
   c->proc = 0;
 
-  #if SCHEDULER == RR
-    for (;;)
-    {
-      // Avoid deadlock by ensuring that devices can interrupt.
-      intr_on();
+  for (;;)
+  {
+#if SCHEDULER == RR
 
-      for (p = proc; p < &proc[NPROC]; p++)
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    // timer interrupt attatched
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
       {
-        acquire(&p->lock);
-        if (p->state == RUNNABLE)
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+#elif SCHEDULER == FCFS
+    intr_on(); 
+    // enable the interrupt signals
+    // choose the proc from the list of available processes with the least creation time
+    int min_time = ticks + 200;
+    struct proc *chosen_proc = 0;
+    acquire(&p->lock);
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p->state == RUNNABLE)
+      {
+        if (p->proc_start_time < min_time)
         {
-          // Switch to chosen process.  It is the process's job
-          // to release its lock and then reacquire it
-          // before jumping back to us.
-          p->state = RUNNING;
-          c->proc = p;
-          swtch(&c->context, &p->context);
-          // Process is done running for now.
-          // It should have changed its p->state before coming back.
-          c->proc = 0;
+          min_time = p->proc_start_time;
+          chosen_proc = p;
         }
-        release(&p->lock);
       }
     }
-  #elif SCHEDULER == FCFS
-  #elif SCHEDULER == PBS
-  #elif SCHEDULER == MLFQ
-  #endif
+    if (chosen_proc != 0)
+    {
+      c->proc = chosen_proc;
+      swtch(&c->context, &chosen_proc->context);
+      chosen_proc->state = RUNNING;
+      c->proc = 0;
+      release(&p->lock);
+    }
+    else
+    {
+      release(&p->lock);
+      continue;
+    }
+#elif SCHEDULER == PBS
+
+#elif SCHEDULER == MLFQ
+#endif
+  }
 }
 
 // Switch to scheduler.  Must hold only p->lock

@@ -117,5 +117,14 @@ struct proc
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int mask;
+
+  int mask; // store the mask for implementing the strace syscall
+
+  int proc_start_time;        // store the starting time for FCFS scheduling 
 };
+
+// define the scheduling algorithms
+#define RR 0
+#define FCFS 1
+#define PBS 2
+#define MLFQ 3

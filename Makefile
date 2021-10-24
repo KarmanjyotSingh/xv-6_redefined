@@ -49,7 +49,25 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 endif
 
 # SCHEDULER OPTIONS 
-# BY DEFAULT SETS TO R
+# BY DEFAULT SETS TO RR 
+
+SCHEDULER = RR 
+ 
+ifeq ($(SCHEDULER),FCFS)
+	SCHEDULER = FCFS
+endif
+
+ifeq ($(SCHEDULER),PBS)
+SCHEDULER = PBS
+endif
+
+ifeq ($(SCHEDULER),MLFQ)
+SCHEDULER = MLFQ
+endif
+
+
+
+
 
 QEMU = qemu-system-riscv64
 
