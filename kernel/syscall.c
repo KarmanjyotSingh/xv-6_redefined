@@ -99,9 +99,10 @@ extern uint64 sys_sleep(void);
 extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
-extern uint64 sys_trace(void);
 extern uint64 sys_uptime(void);
-
+extern uint64 sys_trace(void); // added strace
+extern uint64 sys_waitx(void);
+extern uint64 sys_set_priority(void);
 static uint64 (*syscalls[])(void) = {
     [SYS_fork] sys_fork,
     [SYS_exit] sys_exit,
@@ -125,9 +126,11 @@ static uint64 (*syscalls[])(void) = {
     [SYS_mkdir] sys_mkdir,
     [SYS_close] sys_close,
     [SYS_trace] sys_trace,
+    [SYS_waitx] sys_waitx,
+    [SYS_set_priority] sys_set_priority,
 };
 
-// list storing names of syscalls corresponding to each syscall id 
+// list storing names of syscalls corresponding to each syscall id
 char *syscall_list[] = {
     [SYS_fork] "fork",
     [SYS_exit] "exit",
@@ -151,9 +154,11 @@ char *syscall_list[] = {
     [SYS_mkdir] "mkdir",
     [SYS_close] "close",
     [SYS_trace] "trace",
+    [SYS_waitx] "waitx",
+    [SYS_set_priority] "set_priority",
 };
 
-// array indexed by syscall ID , storing the number of arguments needed by each of the sys call 
+// array indexed by syscall ID , storing the number of arguments needed by each of the sys call
 int syscall_arg_count[] = {
     [SYS_fork] 0,
     [SYS_exit] 1,
@@ -177,37 +182,44 @@ int syscall_arg_count[] = {
     [SYS_mkdir] 1,
     [SYS_close] 1,
     [SYS_trace] 1,
+    [SYS_waitx] 3,
+    [SYS_set_priority] 2,
 };
 
 void syscall(void)
 {
   int num;
   struct proc *p = myproc();
-
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num])
   {
     // get the return value from the syscall
+    int first = p->trapframe->a0;
+    int second = p->trapframe->a1;
+    int third = p->trapframe->a2;
+    int fourth = p->trapframe->a3;
+    int fifth = p->trapframe->a4;
     p->trapframe->a0 = syscalls[num]();
-    if (p->mask & 1 << num)
+    if (p->mask >> num & 0x1)
     {
-       printf("%d: syscall %s ( ", p->pid, syscall_list[num]);
+      printf("%d: syscall %s ( ", p->pid, syscall_list[num]);
       for (int i = 0; i < syscall_arg_count[num]; i++)
       {
         if (i == 0)
-          printf("%d ", p->trapframe->a0);
+          printf("%d ", first);
         else if (i == 1)
-          printf("%d ", p->trapframe->a1);
+          printf("%d ", second);
         else if (i == 2)
-          printf("%d ", p->trapframe->a2);
+          printf("%d ", third);
         else if (i == 3)
-          printf("%d ", p->trapframe->a3);
+          printf("%d ", fourth);
         else if (i == 4)
-          printf("%d ", p->trapframe->a4);
+          printf("%d ", fifth);
       }
       printf(") -> %d\n", p->trapframe->a0);
     }
   }
+
   else
   {
     printf("%d %s: unknown sys call %d\n",

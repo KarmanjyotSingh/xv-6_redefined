@@ -9,6 +9,8 @@
 struct spinlock tickslock;
 uint ticks;
 
+int max_time_limit[5] = {1, 2, 4, 8, 16};
+
 extern char trampoline[], uservec[], userret[];
 
 // in kernelvec.S, calls kerneltrap().
@@ -78,13 +80,28 @@ void usertrap(void)
   if (p->killed)
     exit(-1);
 
-// give up the CPU if this is a timer interrupt.
-// -- DISABLE THE PREEMPTION OF PROCESS IN CASE OF A FCFS PROCESS , NO CPU TIMER INTERRUPT BASED PREEMPTION.
-#if SCHEDULER == RR || SCHEDULER == PBS
-  if (which_dev == 2)
+    // give up the CPU if this is a timer interrupt.
+#ifdef RR
+  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
     yield();
+  }
 #endif
+#ifdef MLFQ
+  acquire(&myproc()->lock);
+  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
 
+    struct proc *tmp = myproc();
+    if (tmp && tmp->current_queue >= max_time_limit[tmp->current_queue])
+    {
+      tmp->change_queue_flag = 1;
+      release(&myproc()->lock);
+      yield();
+    }
+  }
+  release(&myproc()->lock);
+#endif
   usertrapret();
 }
 
@@ -154,20 +171,39 @@ void kerneltrap()
   }
 
   // give up the CPU if this is a timer interrupt.
-#if SCHEDULER == RR || SCHEDULER == PBS
+#ifdef RR
   if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
+    release(&myproc()->lock);
     yield();
+  }
+#endif
+#ifdef MLFQ
+  acquire(&myproc()->lock);
+  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
+    struct proc *tmp = myproc();
+    if (tmp && tmp->current_queue >= max_time_limit[tmp->current_queue])
+    {
+      tmp->change_queue_flag = 1;
+      release(&myproc()->lock);
+      yield();
+    }
+  }
+  release(&myproc()->lock);
+#endif
+
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);
   w_sstatus(sstatus);
-#endif
 }
 
 void clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  update_time();
   wakeup(&ticks);
   release(&tickslock);
 }

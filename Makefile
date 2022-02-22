@@ -48,27 +48,6 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 	echo "***" 1>&2; exit 1; fi)
 endif
 
-# SCHEDULER OPTIONS 
-# BY DEFAULT SETS TO RR 
-
-SCHEDULER = RR 
- 
-ifeq ($(SCHEDULER),FCFS)
-	SCHEDULER = FCFS
-endif
-
-ifeq ($(SCHEDULER),PBS)
-SCHEDULER = PBS
-endif
-
-ifeq ($(SCHEDULER),MLFQ)
-SCHEDULER = MLFQ
-endif
-
-
-
-
-
 QEMU = qemu-system-riscv64
 
 CC = $(TOOLPREFIX)gcc
@@ -92,6 +71,10 @@ ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
 
+ifndef SCHEDULER 
+SCHEDULER:=RR
+endif
+CFLAGS+="-D$(SCHEDULER)"
 LDFLAGS = -z max-page-size=4096
 
 $K/kernel: $(OBJS) $K/kernel.ld $U/initcode
@@ -154,6 +137,9 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_strace\
+	$U/_time\
+	$U/_set_priority\
+	$U/_schedulertest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

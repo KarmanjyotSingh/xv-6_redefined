@@ -118,13 +118,27 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  int mask; // store the mask for implementing the strace syscall
+  // for storing the mask for the given strace syscall
+  int mask;
+  // store the details for the process waitx - start time , creation time ,
+  uint run_time;      // how long the process was running
+  uint creation_time; // when was the process created
+  uint exit_time;     // when the process exited
+  uint total_wait_time;
 
-  int proc_start_time;        // store the starting time for FCFS scheduling 
+  // PBS SCHEDULER
+  uint priority; // priority of the process
+
+  uint num_run;              // number of times it has been scheduled
+  uint ticks_last_scheduled; // ticks of the last time it was scheduled
+  uint last_run;             // store the time process has been running after the last time it was scheduled
+  uint last_sleep;           // store the time process sleeps (was in SLEEPING) after the last time it was scheduled
+
+  // MLFQ SCHEDULER
+  uint current_queue;    // store the current queue number for the proc
+  uint curr_queue_ticks; // store the ticks spent in the current queue
+  uint queue_enter_time; // store the time when the process enters a given queue
+  int change_queue_flag; // set the change_flag  if process exceeds the max time for that queue
+  int ticks[5];          // store the number of ticks process spends in each of the queue
+  int mlfq_wtime;
 };
-
-// define the scheduling algorithms
-#define RR 0
-#define FCFS 1
-#define PBS 2
-#define MLFQ 3

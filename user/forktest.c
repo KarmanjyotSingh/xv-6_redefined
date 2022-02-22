@@ -44,7 +44,6 @@ forktest(void)
     print("wait got too many\n");
     exit(1);
   }
-
   print("fork test OK\n");
 }
 
